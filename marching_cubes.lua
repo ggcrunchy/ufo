@@ -45,42 +45,6 @@ local lshift = bit.lshift
 local M = {}
 
 -- --
-local EdgeTable = ffi.new("int[?]", {
-	0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
-	0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
-	0x190, 0x99 , 0x393, 0x29a, 0x596, 0x49f, 0x795, 0x69c,
-	0x99c, 0x895, 0xb9f, 0xa96, 0xd9a, 0xc93, 0xf99, 0xe90,
-	0x230, 0x339, 0x33 , 0x13a, 0x636, 0x73f, 0x435, 0x53c,
-	0xa3c, 0xb35, 0x83f, 0x936, 0xe3a, 0xf33, 0xc39, 0xd30,
-	0x3a0, 0x2a9, 0x1a3, 0xaa , 0x7a6, 0x6af, 0x5a5, 0x4ac,
-	0xbac, 0xaa5, 0x9af, 0x8a6, 0xfaa, 0xea3, 0xda9, 0xca0,
-	0x460, 0x569, 0x663, 0x76a, 0x66 , 0x16f, 0x265, 0x36c,
-	0xc6c, 0xd65, 0xe6f, 0xf66, 0x86a, 0x963, 0xa69, 0xb60,
-	0x5f0, 0x4f9, 0x7f3, 0x6fa, 0x1f6, 0xff , 0x3f5, 0x2fc,
-	0xdfc, 0xcf5, 0xfff, 0xef6, 0x9fa, 0x8f3, 0xbf9, 0xaf0,
-	0x650, 0x759, 0x453, 0x55a, 0x256, 0x35f, 0x55 , 0x15c,
-	0xe5c, 0xf55, 0xc5f, 0xd56, 0xa5a, 0xb53, 0x859, 0x950,
-	0x7c0, 0x6c9, 0x5c3, 0x4ca, 0x3c6, 0x2cf, 0x1c5, 0xcc ,
-	0xfcc, 0xec5, 0xdcf, 0xcc6, 0xbca, 0xac3, 0x9c9, 0x8c0,
-	0x8c0, 0x9c9, 0xac3, 0xbca, 0xcc6, 0xdcf, 0xec5, 0xfcc,
-	0xcc , 0x1c5, 0x2cf, 0x3c6, 0x4ca, 0x5c3, 0x6c9, 0x7c0,
-	0x950, 0x859, 0xb53, 0xa5a, 0xd56, 0xc5f, 0xf55, 0xe5c,
-	0x15c, 0x55 , 0x35f, 0x256, 0x55a, 0x453, 0x759, 0x650,
-	0xaf0, 0xbf9, 0x8f3, 0x9fa, 0xef6, 0xfff, 0xcf5, 0xdfc,
-	0x2fc, 0x3f5, 0xff , 0x1f6, 0x6fa, 0x7f3, 0x4f9, 0x5f0,
-	0xb60, 0xa69, 0x963, 0x86a, 0xf66, 0xe6f, 0xd65, 0xc6c,
-	0x36c, 0x265, 0x16f, 0x66 , 0x76a, 0x663, 0x569, 0x460,
-	0xca0, 0xda9, 0xea3, 0xfaa, 0x8a6, 0x9af, 0xaa5, 0xbac,
-	0x4ac, 0x5a5, 0x6af, 0x7a6, 0xaa , 0x1a3, 0x2a9, 0x3a0,
-	0xd30, 0xc39, 0xf33, 0xe3a, 0x936, 0x83f, 0xb35, 0xa3c,
-	0x53c, 0x435, 0x73f, 0x636, 0x13a, 0x33 , 0x339, 0x230,
-	0xe90, 0xf99, 0xc93, 0xd9a, 0xa96, 0xb9f, 0x895, 0x99c,
-	0x69c, 0x795, 0x49f, 0x596, 0x29a, 0x393, 0x99 , 0x190,
-	0xf00, 0xe09, 0xd03, 0xc0a, 0xb06, 0xa0f, 0x905, 0x80c,
-	0x70c, 0x605, 0x50f, 0x406, 0x30a, 0x203, 0x109, 0x0
-})
-
--- --
 local TriTable = ffi.new("int[16][?]", {
 	{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
 	{0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
@@ -382,6 +346,22 @@ end
 -- --
 local Merge = ffi.new("int[?]", { 0, 0, 0, 4, 0, 0, 0, 12, 13, 15, 13, 11 })
 
+-- --
+local VertList = ffi.new("dvector3[12]")
+
+--
+local function GetVertex (grid, index, computed)
+	local mask = lshift(1, index)
+
+	if band(computed, mask) == 0 then
+		computed = bor(computed, mask)
+
+		VertList[index] = VertexInterp(grid, band(index, 7), bxor(index + 1, Merge[index]))
+	end
+
+	return VertList[index], computed
+end
+
 -- Given a grid cell and an isolevel, calculate the triangular
 -- facets required to represent the isosurface through the cell.
 -- Return the number of triangular facets, the array "triangles"
@@ -391,45 +371,21 @@ local Merge = ffi.new("int[?]", { 0, 0, 0, 4, 0, 0, 0, 12, 13, 15, 13, 11 })
 local function Polygonise (grid, triangles)
 	-- Determine the index into the edge table which
 	-- tells us which vertices are inside of the surface
-	local cubeindex, index, mask = 0, 0, 1
+	local cubeindex = 0
 	
 	for i = 0, 7 do
 		if grid.val[i] < ISOLEVEL then
-			cubeindex = bor(cubeindex, mask)
+			cubeindex = bor(cubeindex, lshift(1, i))
 		end
-
-		mask = lshift(mask, 1)
 	end
-
-	-- Cube is entirely in/out of the surface?
-	local eflags = EdgeTable[cubeindex]
-	
-	if eflags == 0 then
-		return 0
-	end
-
-	-- Find the vertices where the surface intersects the cube
-	local vert_list = ffi.new("dvector3[12]")
-	
-	mask = 1
-
-	repeat
-		if band(eflags, mask) ~= 0 then
-			vert_list[index] = VertexInterp(grid, band(index, 7), bxor(index + 1, Merge[index]))
-		end
-
-		index, mask = index + 1, lshift(mask, 1)
-	until mask >= eflags
 
 	-- Create the triangle
-	local ntriang = 0
-
-	index = 0
+	local computed, index, ntri = 0, 0, 0
 
 	while TriTable[cubeindex][index] != -1 do
-		triangles[ntri].p[0] = vert_list[TriTable[cubeindex][index + 0]]
-		triangles[ntri].p[1] = vert_list[TriTable[cubeindex][index + 1]]
-		triangles[ntri].p[2] = vert_list[TriTable[cubeindex][index + 2]]
+		triangles[ntri].p[0], computed = GetVertex(grid, TriTable[cubeindex][index + 0]], computed)
+		triangles[ntri].p[1], computed = GetVertex(grid, TriTable[cubeindex][index + 1]], computed)
+		triangles[ntri].p[2], computed = GetVertex(grid, TriTable[cubeindex][index + 2]], computed)
 
 		ntri, index = ntri + 1, index + 3
 	end
@@ -557,54 +513,56 @@ end
     private int mRx, mRy, mRz;
     private int mResolution;
 ]]
-    -- Calculate the grid bounds
-	-- Set a default isolevel
-	-- Set an initial resolution
+-- Calculate the grid bounds
+-- Set a default isolevel
+-- Set an initial resolution
+local function CalcBounds ()
+	if DATA == nil then
+		return
+	end
+
+	local NxNyNz, sum = NX * NY * NZ, 0
+
+	-- Find the range
+	MIN, MAX = huge, -huge
+
+	for i = 0, NxNyNz - 1 do
+		MAX = max(MAX, DATA[i])
+		MIN = min(MIN, DATA[i])
+
+		sum = sum + DATA[i]
+	end
+
+	if MIN >= MAX then
+		MAX = MAX + 1
+	end
+
+	-- Reset the isolevel
+	ISOLEVEL = sum / NxNyNz
+	
+	if ISOLEVEL < MIN or ISOLEVEL > MAX then
+		ISOLEVEL = (MAX + MIN) / 2
+	end
+
+	-- Set an appropriate resolution
+	RESOLUTION = min(max(NX, NY, NZ) / 20 + 1, 10)
+end
+
+--
+local function SetCell (cell, ci, i, j, k, NxNy)
+	cell.p[ci].x = i * DX
+	cell.p[ci].y = j * DY
+	cell.p[ci].z = k * DZ
+
+    local index = k * NxNy + j * NX + i
+
+    cell.val[ci] = DATA[index]
+end
+
+-- --
+local MaxPolygons = 10000
+
 --[[
-    public void CalcBounds ()
-    {
-        if (mData == null) return;
-
-        int NxNyNz = mNx * mNy * mNz, sum = 0;
-
-        // Find the range
-        mMin = int.MaxValue;
-        mMax = int.MinValue;
-
-        for (int i = 0; i < NxNyNz; ++i)
-        {
-            mMax = Math.Max(mMax, mData[i]);
-            mMin = Math.Min(mMin, mData[i]);
-
-            sum += mData[i];
-        }
-
-        if (mMin >= mMax) ++mMax;
-
-        // Reset the isolevel
-        mIsoLevel = (float)sum / NxNyNz;
-
-        if (mIsoLevel < mMin || mIsoLevel > mMax) mIsoLevel = 0.5f * (mMax + mMin);
-
-        // Set an appropriate resolution
-        int nmax = Math.Max(mNx, Math.Max(mNy, mNz));
-
-        mResolution = Math.Min(nmax / 20 + 1, 10);
-    }
-
-    void SetCell (ref GridCell cell, int ci, int i, int j, int k, int NxNy)
-    {
-        cell.p[ci].x = i * mDx;
-        cell.p[ci].y = j * mDy;
-        cell.p[ci].z = k * mDz;
-
-        int index = k * NxNy + j * mNx + i;
-
-        cell.val[ci] = mData[index];
-    }
-
-    const int kMaxPolygons = 10000;
-
     void CopyTo<T> (ref T[] arr, int extra)
     {
         T[] newa = new T[arr.Length + extra];
@@ -618,77 +576,69 @@ end
     {
         if (arr.Length > count) Array.Resize(ref arr, count);
     }
+]]
+
+-- --
+local sTri = ffi.new("Triangle[12]")
+
+-- Draw the isosurface facets
+function M.DrawIsoSurface (mesh, pos)
+    local cell = ffi.new("GridCell")
+
+	local NxNy, npolygons, vi = NX * NY, 0, 0
+
+	local VLen = 200 * 3
 	
-	static Triangle[] sTri;
-	
-    // Draw the isosurface facets
-    public void DrawIsoSurface (ref Mesh mesh, Vector3 pos)
-    {
-        GridCell cell = new GridCell();
+	local verts = ffi.new("dvector3[?]", VLen)
+--	local uv = ffi.new(
+--	local triangles = ffi.new(
 
-		if (sTri == null)
-		{
-			sTri = new Triangle[12];
-			
-			for (int i = 0; i < sTri.Length; ++i) sTri[i] = new Triangle();
-		}
-		
-        int NxNy = mNx * mNy, npolygons = 0, vi = 0;
+	for i = 0, NX - 1, RX do
+		local ii = min(i + RX, NX - 1)
 
-        Vector3[] verts = new Vector3[200 * 3];
-        Vector2[] uv = new Vector2[verts.Length];
-        int[] triangles = new int[verts.Length];
+		for j = 0, NY - 1, RY do
+			local jj = min(j + RY, NY - 1)
 
-        for (int i = 0; i < mNx - 1; i += mRx)
-        {
-            int ii = Math.Min(i + mRx, mNx - 1);
+			for k = 0, NZ - 1, RZ do
+				local kk = min(k + RZ, NZ - 1)
 
-            for (int j = 0; j < mNy - 1; j += mRy)
-            {
-                int jj = Math.Min(j + mRy, mNy - 1);
+				SetCell(cell, 0, i, j, k, NxNy)
+				SetCell(cell, 1, ii, j, k, NxNy)
+				SetCell(cell, 2, ii, j, kk, NxNy)
+				SetCell(cell, 3, i, j, kk, NxNy)
+				SetCell(cell, 4, i, jj, k, NxNy)
+				SetCell(cell, 5, ii, jj, k, NxNy)
+				SetCell(cell, 6, ii, jj, kk, NxNy)
+				SetCell(cell, 7, i, jj, kk, NxNy)
 
-                for (int k = 0; k < mNz - 1; k += mRz)
-                {
-                    int kk = Math.Min(k + mRz, mNz - 1);
+                local ntri = M.Polygonise(cell, sTri)
 
-                    SetCell(ref cell, 0, i, j, k, NxNy);
-                    SetCell(ref cell, 1, ii, j, k, NxNy);
-                    SetCell(ref cell, 2, ii, j, kk, NxNy);
-                    SetCell(ref cell, 3, i, j, kk, NxNy);
-                    SetCell(ref cell, 4, i, jj, k, NxNy);
-                    SetCell(ref cell, 5, ii, jj, k, NxNy);
-                    SetCell(ref cell, 6, ii, jj, kk, NxNy);
-                    SetCell(ref cell, 7, i, jj, kk, NxNy);
+                npolygons = npolygons + ntri
 
-                    int ntri = Polygonise(cell, ref sTri);
+				for t = 0, ntri - 1 do
+					if vi + 3 > VLen then
+					    -- CopyTo(ref verts, 50 * 3);
+                        -- CopyTo(ref uv, 50 * 3); // ?
+                        -- CopyTo(ref triangles, 50 * 3); // More or less...
+					end
 
-                    npolygons += ntri;
+					for v = 0, 2 do
+						verts[vi] = pos + sTri[t].p[v]	-- * dx, dy, dz
 
-                    for (int t = 0; t < ntri; ++t)
-                    {
-                        if (vi + 3 > verts.Length)
-                        {
-                            CopyTo(ref verts, 50 * 3);
-                            CopyTo(ref uv, 50 * 3); // ?
-                            CopyTo(ref triangles, 50 * 3); // More or less...
-                        }
-
-                        for (int v = 0; v < 3; ++v)
-                        {
-                            verts[vi++] = pos + sTri[t].p[v]; // * dx, dy, dz...
-
-                            triangles[vi - 1] = vi - 1; // :/
-
-//                            uv[vi - 1] = FROM_CELLS()...
-                        }
-                    } // t
+						-- Triangles, uv
+						vi = vi + 1
+					end
+				end
                     
-                    if (npolygons > kMaxPolygons) return;
-				} // k
-			} // j
-		} // i
+                if npolygons > MaxPolygons then
+					return
+				end
+			end
+		end
+	end
 
-        // REBASE INDICES?
+        -- REBASE INDICES?
+--[[
         Trim(ref verts, vi);
         Trim(ref uv, vi); // ?
         Trim(ref triangles, vi); // *sigh*
@@ -696,7 +646,8 @@ end
         mesh.vertices = verts;
         mesh.uv = uv;
         mesh.triangles = triangles;
-    }
+]]
+end
 
 	Bounds mCube;
 	
@@ -791,87 +742,47 @@ end
 }
 ]]
 
---[[
-    void Swap (ref float a, ref float b)
-    {
-        if (a <= b) return;
 
-        float temp = b;
+local function Swap (a, b)
+	if a <= b then
+		return a, b
+	else
+		return b, a
+	end
+end
 
-        b = a;
-        a = temp;
-    }
+local function STUFF ()
+	-- Make a "world" cube that encloses all the sub-beams.
+	local EXTRA = v3math(1,1,1)*(Radius + .001)
+	local P = pos + BeginAt * dir
+	local Q = P + max_range * dir
 
-    Mesh mM = null;
-	GameObject mGO = null;
+	P.x, Q.x = Swap(P.x, Q.x)
+	P.y, Q.y = Swap(P.y, Q.y)
+	P.z, Q.z = Swap(P.z, Q.z)
+
+	local WORLD = Bounds(P - EXTRA, Q + EXTRA)
+
+	MarchingCubes.Reset(WORLD)
 	
+	-- SOME MESH THING
 	
+	-- RESET MESH
+
 	
-	       // Make a "world" cube that encloses all the sub-beams.
-        Vector3 extra = Vector3.one * (Radius + .001f);
-        Vector3 p = transform.position + BeginAt * dir;
-        Vector3 q = p + max_range * dir;
+	for i = 0, NDisps - 1 do
+		local disp = Disps[i]
 
-        Swap(ref p.x, ref q.x);
-        Swap(ref p.y, ref q.y);
-        Swap(ref p.z, ref q.z);
+        ray.origin = pos + BeginAt * dir + (right * disp.x + transform.up * disp.y) * Radius
 
-        Bounds world = new Bounds();
+        MarchingCubes.WalkRay(world, ray, (int)(256 - disp.SqrMagnitude() * r2 * 32), min(RANGES[i], LEN))
+	end
 
-        world.SetMinMax(p - extra, q + extra);
+	MarchingCubes.CalcBounds()
+	MarchingCubes.DrawIsoSurface(MESH, world.min)
 
-        //
-        MarchingCubes mc = GetComponent<MarchingCubes>();
-		
-		mc.Reset(world);
-		
-        if (mGO == null)
-        {
-            mGO = new GameObject("STUPID", typeof(MeshFilter), typeof(MeshRenderer));
-
-            mM = new Mesh();
-
-            mGO.GetComponent<MeshFilter>().mesh = mM;
-			
-			mGO.renderer.material.color = Color.blue;
-
-			mGO.renderer.castShadows = false;
-			mGO.renderer.receiveShadows = false;
-        }
-
-        mM.Clear();
-		
-		
-		
-		        //
-        float radius = Radius / 3, len = max_range / (Divisions + 1) + .01f, r2 = 1.0f / (Radius * Radius);
-
-        for (int i = 0; i < Disps.Length; ++i)
-        {
-            Vector2 disp = Disps[i];
-
-            float offset = BeginAt;
-
-            //
-       //     for (float range = mRanges[i]; range > .01f; range -= len)
-			float range = mRanges[i];
-            {
-                float sublen = Mathf.Min(len, range);
-
-                ray.origin = transform.position + (offset/* + sublen*/) * dir + (right * disp.x + transform.up * disp.y) * Radius;/// SpreadDiv;;
-
-                //
-                mc.WalkRay(world, ray, (int)(256 - disp.SqrMagnitude() * r2 * 32), sublen);
-                
-                offset += sublen;
-            }
-        }
-
-		mc.CalcBounds();
-        mc.DrawIsoSurface(ref mM, world.min);
-
-		mM.RecalculateNormals();
-]]
+	MESH.RecalculateNormals()
+end
 
 -- Export the module.
 return M
