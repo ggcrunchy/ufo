@@ -34,6 +34,7 @@ local min = math.min
 -- Modules --
 local ffi = require("ffi")
 local bit = require("bit")
+local v3math = require("v3math")
 
 -- Imports --
 local band = bit.band
@@ -340,7 +341,7 @@ local function VertexInterp (grid, i1, i2)
 
 	local mu = (ISOLEVEL - valp1) / (valp2 - valp1)
 
-	return p1 + mu * (p2 - p1) -- TODO!
+	return v3math.addscalednew(p1, v3math.subnew(p2, p1), mu)
 end
 
 -- --

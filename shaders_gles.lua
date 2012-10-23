@@ -20,17 +20,18 @@ local gl = require("ffi/OpenGLES2")
 
 -- Exports --
 local M = {}
-local Log = { e = print }
---- Load a shader, check for compile errors, print error messages to output log
+
+--- Load a shader, checking for compile errors
 -- @param type Type of shader (GL_VERTEX_SHADER or GL_FRAGMENT_SHADER)
 -- @param source Shader source string
 -- @return A new shader object on success, 0 on failure
+-- @treturn string On failure, an error string
 function M.LoadShader (type, source)
 	-- Create the shader object
 	local shader = gl.glCreateShader(type)
 
 	if shader == 0 then
-		return 0
+		return 0, "Could not create shader"
 	end
 
 	-- Load the shader source
@@ -56,42 +57,42 @@ function M.LoadShader (type, source)
 		local buffer = ffi.new("char[?]", length)
 
 		gl.glGetShaderInfoLog(shader, length, int, buffer)
-
-		Log.e("ESShader", ffi.string(buffer))
-
 		gl.glDeleteShader(shader)
 
-		return 0
+		return 0, ffi.string(buffer)
 	end
 
 	return shader
 end
 
---- Load a vertex and fragment shader, create a program object, link program. Errors output to log.
+--- Load a vertex and fragment shader, create a program object, link program.
 -- @param vert_src Vertex shader source code
 -- @param frag_src Fragment shader source code
 -- @return A new program object linked with the vertex/fragment shader pair, 0 on failure
+-- @treturn string On failure, an error string
 function M.LoadProgram (vert_src, frag_src)
 	-- Load the vertex/fragment shaders
-	local vert_shader = M.LoadShader(gl.GL_VERTEX_SHADER, vert_src)
+	local vert_shader, vs_err = M.LoadShader(gl.GL_VERTEX_SHADER, vert_src)
 
 	if vert_shader == 0 then
-		return 0
+		return 0, vs_err
 	end
 
-	local frag_shader = M.LoadShader(gl.GL_FRAGMENT_SHADER, frag_src)
+	local frag_shader, fs_err = M.LoadShader(gl.GL_FRAGMENT_SHADER, frag_src)
 
 	if frag_shader == 0 then
 		gl.glDeleteShader(vert_shader)
 
-		return 0
+		return 0, fs_err
 	end
 
 	-- Create the program object
 	local program_object = gl.glCreateProgram()
 
 	if program_object == 0 then
-		return 0
+		-- Should delete shaders, no? Error in original?
+
+		return 0, "Could not create program"
 	end
 
 	gl.glAttachShader(program_object, vert_shader)
@@ -106,12 +107,13 @@ function M.LoadProgram (vert_src, frag_src)
 	gl.glGetProgramiv(program_object, gl.GL_LINK_STATUS, linked)
 
 	if linked[0] == 0 then
-		Log.e("ESShader", "Error linking program:")
-		Log.e("ESShader", gl.glGetProgramInfoLog(program_object))
+		local plog = gl.glGetProgramInfoLog(program_object)
+
+		-- Shaders?
 
 		gl.glDeleteProgram(program_object)
 
-		return 0
+		return 0, "Error linking program: " .. plog
 	end
 
 	-- Free up no longer needed shader resources

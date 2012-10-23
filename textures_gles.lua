@@ -2,7 +2,7 @@
 local ffi = require("ffi")
 local gl  = require("ffi/OpenGLES2")
 local sdl = require("ffi/sdl")
-local shaders = require("shaders_gles")
+local shader_helper = require("lib.shader_helper")
 local xforms = require("transforms_gles")
 
 -- Exports --
@@ -12,7 +12,7 @@ local M = {}
 local Proj = xforms.New()
 
 -- --
-local SP = shaders.LoadProgram(
+local SP = shader_helper.NewShader(
 	[[
 		attribute mediump vec2 position;
 		attribute mediump vec2 texcoord;
@@ -39,15 +39,15 @@ local SP = shaders.LoadProgram(
 	]]
 )
 
-local loc_proj = gl.glGetUniformLocation(SP, "proj")
-local loc_pos = gl.glGetAttribLocation(SP, "position")
-local loc_tex = gl.glGetAttribLocation(SP, "texcoord")
+local loc_proj = SP:GetUniformByName("proj")
+local loc_pos = SP:GetAttributeByName("position")
+local loc_tex = SP:GetAttributeByName("texcoord")
 
 --- DOCME
 function M.Begin2D ()
 	local screen = sdl.SDL_GetVideoSurface()
 
-	gl.glUseProgram(SP)
+	SP:Use()
 	
 	gl.glDisable(gl.GL_DEPTH_TEST)
 	gl.glDisable(gl.GL_CULL_FACE)
@@ -87,19 +87,18 @@ function M.Draw (name, x, y, w, h, u1, v1, u2, v2)
 		x + w, y + h
 	)
 
-	gl.glUniformMatrix4fv(loc_proj, 1, gl.GL_FALSE, Proj[0])
-	gl.glVertexAttribPointer(loc_pos, 2, gl.GL_FLOAT, gl.GL_FALSE, 0, ver)
-	gl.glVertexAttribPointer(loc_tex, 2, gl.GL_FLOAT, gl.GL_FALSE, 0, tex)
-	gl.glEnableVertexAttribArray(loc_pos)
-	gl.glEnableVertexAttribArray(loc_tex)
-	gl.glDrawArrays(gl.GL_TRIANGLE_STRIP, 0, 4)
+	SP:BindUniformMatrixByLoc(loc_proj, Proj[0])
+	SP:BindAttributeStreamByLoc(loc_pos, ver, 2)
+	SP:BindAttributeStreamByLoc(loc_tex, tex, 2)
+
+	SP:DrawArrays(gl.GL_TRIANGLE_STRIP, 4)
 end
 
 --- DOCME
 function M.End2D ()
 	gl.glDisable(gl.GL_TEXTURE_2D)
-	gl.glDisableVertexAttribArray(loc_pos)
-	gl.glDisableVertexAttribArray(loc_tex)
+
+	SP:Disable()
 end
 
 --
@@ -138,7 +137,7 @@ function M.LoadTexture (surface)
 	elseif ncolors == 3 then
 		format = gl.GL_RGB
 	else
-		-- ERROR!
+		-- ERROR! (check this in XP...)
 	end
 
 	-- No BGR / BGRA on ES: convert to RGB / RGBA.

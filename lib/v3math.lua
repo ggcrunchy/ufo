@@ -79,6 +79,31 @@ local function scalenew(a, k)
    return scale(new(), a, k)
 end
 
+---- ADD SCALED ----
+local function addscaled(r, a, b, k)
+   r[0], r[1], r[2] = a[0]+b[0]*k, a[1]+b[1]*k, a[2]+b[2]*k
+   return r
+end
+local function addscaledself(a, b, k)
+   return addscaled(a, a, b, k)
+end
+local function addscalednew(a, b, k)
+   return addscaled(new(), a, b, k)
+end
+
+---- LERP ----
+local function lerp(r, a, b, k)
+   local s = 1 - k
+   r[0], r[1], r[2] = a[0]*s+b[0]*k, a[1]*s+b[1]*k, a[2]*s+b[2]*k
+   return r
+end
+local function lerpself(a, b, k)
+   return lerp(a, a, b, k)
+end
+local function lerpnew(a, b, k)
+   return lerp(new(), a, b, k)
+end
+
 --- NORM ----
 local function norm(r, a)
    local im = 1 / len(a)
@@ -136,6 +161,8 @@ return {
    add   = add,   addself   = addself,   addnew   = addnew,
    sub   = sub,   subself   = subself,   subnew   = subnew,
    scale = scale, scaleself = scaleself, scalenew = scalenew,
+   addscaled = addscaled, addscaledself = addscaledself, addscalednew = addscalednew,
+   lerp = lerp,   lerpself  = lerpself,  lerpnew  = lerpnew,
    norm  = norm,  normself  = normself,  normnew  = normnew,
    cross = cross, crossself = crossself, crossnew = crossnew,
    dir   = dir,   dirself   = dirself,   dirnew   = dirnew,

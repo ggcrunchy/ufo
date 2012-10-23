@@ -30,9 +30,8 @@ local v3math = require("lib.v3math")
 local M = {}
 
 --- DOCME
-function M.New ()
-	return ffi.new("float[4][4]")
-end
+-- @function New
+M.New = ffi.typeof("float[4][4]")
 
 --- DOCME
 -- @param matrix
