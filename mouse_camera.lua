@@ -48,7 +48,7 @@ local Up = v3math.new()
 -- @tparam vec3 dir
 -- @tparam vec3 side
 -- @tparam vec3 up
-function M.GetMatrix (pos, dir, side, up)
+function M.GetVectors (pos, dir, side, up)
 	for i = 0, 2 do
 		pos[i] = Pos[i]
 		dir[i] = Dir[i]

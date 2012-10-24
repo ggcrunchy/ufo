@@ -26,6 +26,7 @@
 -- Standard library imports --
 local assert = assert
 local ipairs = ipairs
+local max = math.max
 local setmetatable = setmetatable
 
 -- Modules --
@@ -77,10 +78,32 @@ local function Disable ()
 	BoundLocs = nil
 end
 
+-- --
+local OnDone
+
+-- --
+local Program = 0
+
+-- --
+local UniformNames
+
+--
+local function StopUsing ()
+	if OnDone then
+		OnDone()
+	end
+
+	Program, OnDone, UniformNames = 0
+end
+
 --- DOCME
 function ShaderMT:Disable ()
 	if self._alocs == BoundLocs then
 		Disable()
+	end
+
+	if self._program == Program then
+		StopUsing()
 	end
 end
 
@@ -123,7 +146,26 @@ end
 
 --- DOCME
 function ShaderMT:Use ()
-	gl.glUseProgram(self._program)
+	if self._program ~= Program then
+		StopUsing()
+
+		Program = self._program
+
+		gl.glUseProgram(Program)
+
+		OnDone = self._on_done
+		UniformNames = self._unames
+
+		if self._on_use then
+			self:_on_use()
+		end
+	end
+end
+
+--- DOCME
+function M.Finish ()
+	Disable()
+	StopUsing()
 end
 
 -- --
@@ -157,9 +199,10 @@ end
 --- DOCME
 -- @string vs_source
 -- @string fs_source
+-- @ptable options
 -- @treturn table X
 -- @treturn string Y
-function M.NewShader (vs_source, fs_source)
+function M.NewShader (vs_source, fs_source, options)
 	local prog, err = shaders.LoadProgram(vs_source, fs_source)
 
 	if prog ~= 0 then
@@ -170,11 +213,46 @@ function M.NewShader (vs_source, fs_source)
 		local alocs, anames = EnumFeatures(prog, buffer, len, gl.GL_ACTIVE_ATTRIBUTES, "glGetActiveAttrib", "glGetAttribLocation")
 		local ulocs, unames = EnumFeatures(prog, buffer, len, gl.GL_ACTIVE_UNIFORMS, "glGetActiveUniform", "glGetUniformLocation")
 
-		return setmetatable({ _alocs = alocs, _anames = anames, _ulocs = ulocs, _unames = unames, _program = prog }, ShaderMT)
+		--
+		local shader = { _alocs = alocs, _anames = anames, _ulocs = ulocs, _unames = unames, _program = prog }
+
+		if options then
+			shader._on_use = options.on_use
+			shader._on_done = options.on_done
+		end
+
+		return setmetatable(shader, ShaderMT)
 	else
 		return nil, err
 	end
 end
+
+-- --
+local FloatVar = ffi.new("GLfloat[1]")
+
+---
+M.Uniforms = setmetatable({}, {
+	__index = function(_, k)
+		assert(Program ~= 0, "No program in use")
+
+		local loc = assert(UniformNames[k], "Uniform not found")
+
+		-- TODO: Discriminate ints, handle long arrays...
+		local var = FloatVar
+
+		gl.glGetUniformfv(Program, loc, var)
+
+		return var[0]
+	end,
+	__newindex = function(_, k, v)
+		assert(Program ~= 0, "No program in use")
+
+		local loc = assert(UniformNames[k], "Uniform not found")
+
+		-- TODO: Discriminate ints, handle panoply of sizes...
+--		gl.glUniformTHIS_OR_THAT()...
+	end
+})
 
 -- Export the module.
 return M

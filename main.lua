@@ -194,11 +194,7 @@ local function DrawLogoCursor (x, y)
 		end
 	end
 
-	textures.Begin2D()
-
 	textures.Draw(cursor_texture[0], x, y, iw, ih, minx, miny, maxx, maxy)
-
-	textures.End2D()
 end
 
 local color = ffi.new("GLfloat[960]", {
@@ -238,11 +234,24 @@ for i = 1, 9 do
 	end
 end
 
-local shaders = require("shaders_gles")
+local shader_helper = require("lib.shader_helper")
 local shapes = require("shapes_gles")
 local xforms = require("transforms_gles")
 
-local sp = shaders.LoadProgram(
+local proj = xforms.New()
+
+xforms.MatrixLoadIdentity(proj)
+xforms.Perspective(proj, 70, ww / wh, 1, 1000)
+
+local camera = xforms.New()
+
+xforms.MatrixLoadIdentity(camera)
+
+local mvp = xforms.New()
+
+gl.glViewport( 0, 0, ww, wh )
+
+local SP = shader_helper.NewShader(
 	[[
 		attribute lowp vec4 color;
 		attribute mediump vec3 position;
@@ -263,25 +272,22 @@ local sp = shaders.LoadProgram(
 		{
 			gl_FragColor = vec4(col, 1);
 		}
-	]]
+	]],
+	{
+		on_use = function()
+			gl.glViewport(0, 0, ww, wh)
+
+			xforms.MatrixMultiply(mvp, camera, proj)
+
+			gl.glEnable(gl.GL_DEPTH_TEST)
+			gl.glEnable(gl.GL_CULL_FACE)
+		end
+	}
 )
 
-local loc_color = gl.glGetAttribLocation(sp, "color")
-local loc_position = gl.glGetAttribLocation(sp, "position")
-local loc_mvp = gl.glGetUniformLocation(sp, "mvp")
-
-local proj = xforms.New()
-
-xforms.MatrixLoadIdentity(proj)
-xforms.Perspective(proj, 70, ww / wh, 1, 1000)
-
-local camera = xforms.New()
-
-xforms.MatrixLoadIdentity(camera)
-
-local mvp = xforms.New()
-
-gl.glViewport( 0, 0, ww, wh )
+local loc_color = SP:GetAttributeByName("color")
+local loc_position = SP:GetAttributeByName("position")
+local loc_mvp = SP:GetUniformByName("mvp")
 
 local mc = require("mouse_camera")
 local v3math = require("lib.v3math")
@@ -345,10 +351,6 @@ local x, dx = 0, 1
 local CUBE = shapes.GenCube(1)
 
 local function Test ()
-	gl.glViewport(0, 0, ww, wh)
-
-	gl.glUseProgram(sp)
-
 	local ddir = dwheel * .2
 	local dside = CalcMove("left", "right", .2)
 
@@ -363,7 +365,7 @@ local function Test ()
 	local side = v3math.new()
 	local up = v3math.new()
 
-	mc.GetMatrix(pos, dir, side, up)
+	mc.GetVectors(pos, dir, side, up)
 
 	xforms.MatrixLoadIdentity(camera)
 
@@ -371,27 +373,13 @@ local function Test ()
 
 	xforms.LookAt(camera, pos[0], pos[1], pos[2], target[0], target[1], target[2], up[0], up[1], up[2])
 
-	xforms.MatrixMultiply(mvp, camera, proj)
+	SP:Use()
 
-	gl.glEnable(gl.GL_DEPTH_TEST)
---gl.glDepthFunc(gl.GL_LESS)
-	gl.glEnable(gl.GL_CULL_FACE)
---	gl.glCullFace(gl.GL_BACK)
+	SP:BindUniformMatrix(loc_mvp, mvp[0])
+	SP:BindAttributeStream(loc_color, color, 4)
+	SP:BindAttributeStream(loc_position, CUBE.vertices, 3)
 
-	gl.glUniformMatrix4fv(loc_mvp, 1, gl.GL_FALSE, mvp[0])
-	gl.glVertexAttribPointer(loc_color, 4, gl.GL_FLOAT, gl.GL_FALSE, 0, color)
-	gl.glVertexAttribPointer(loc_position, 3, gl.GL_FLOAT, gl.GL_FALSE, 0, CUBE.vertices)
-	gl.glEnableVertexAttribArray(loc_color)
-	gl.glEnableVertexAttribArray(loc_position)
---	gl.glDrawArrays(gl.GL_TRIANGLE_STRIP, 0, 24)
-gl.glDrawElements(gl.GL_TRIANGLES, CUBE.num_indices, gl.GL_UNSIGNED_SHORT, CUBE.indices)
-
---[[
-	gl.glMatrixMode(gl.GL_MODELVIEW)
-	gl.glRotatef(5.0, 1.0, 1.0, 1.0)
-]]
-	gl.glDisableVertexAttribArray(loc_color)
-	gl.glDisableVertexAttribArray(loc_position)
+	SP:DrawElements(gl.GL_TRIANGLES, CUBE.indices, CUBE.num_indices)
 
 	DrawLogoCursor(100 + x, 100)
 

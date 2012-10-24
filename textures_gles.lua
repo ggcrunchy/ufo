@@ -36,28 +36,32 @@ local SP = shader_helper.NewShader(
 		{
 			gl_FragColor = texture2D(tex, uv);
 		}
-	]]
+	]],
+	{
+		on_done = function()
+			gl.glDisable(gl.GL_TEXTURE_2D)
+		end,
+
+		on_use = function()
+			gl.glDisable(gl.GL_DEPTH_TEST)
+			gl.glDisable(gl.GL_CULL_FACE)
+			gl.glEnable(gl.GL_TEXTURE_2D)
+
+			local screen = sdl.SDL_GetVideoSurface()
+
+			gl.glViewport(0, 0, screen.w, screen.h)
+
+			xforms.MatrixLoadIdentity(Proj)
+			xforms.Ortho(Proj, 0, screen.w, screen.h, 0, 0, 1)
+
+			gl.glActiveTexture(gl.GL_TEXTURE0)
+		end
+	}
 )
 
 local loc_proj = SP:GetUniformByName("proj")
 local loc_pos = SP:GetAttributeByName("position")
 local loc_tex = SP:GetAttributeByName("texcoord")
-
---- DOCME
-function M.Begin2D ()
-	local screen = sdl.SDL_GetVideoSurface()
-
-	SP:Use()
-	
-	gl.glDisable(gl.GL_DEPTH_TEST)
-	gl.glDisable(gl.GL_CULL_FACE)
-	gl.glEnable(gl.GL_TEXTURE_2D)
-
-	gl.glViewport(0, 0, screen.w, screen.h)
-
-	xforms.MatrixLoadIdentity(Proj)
-	xforms.Ortho(Proj, 0, screen.w, screen.h, 0, 0, 1)
-end
 
 --- DOCME
 -- @param name
@@ -70,7 +74,8 @@ end
 -- @param u2
 -- @param v2
 function M.Draw (name, x, y, w, h, u1, v1, u2, v2)
-	gl.glActiveTexture(gl.GL_TEXTURE0)
+	SP:Use()
+
 	gl.glBindTexture(gl.GL_TEXTURE_2D, name)
 
 	local tex = ffi.new("float[8]",
@@ -86,19 +91,12 @@ function M.Draw (name, x, y, w, h, u1, v1, u2, v2)
 		x, y + h,
 		x + w, y + h
 	)
-
+-- TODO: batching...
 	SP:BindUniformMatrix(loc_proj, Proj[0])
 	SP:BindAttributeStream(loc_pos, ver, 2)
 	SP:BindAttributeStream(loc_tex, tex, 2)
 
 	SP:DrawArrays(gl.GL_TRIANGLE_STRIP, 4)
-end
-
---- DOCME
-function M.End2D ()
-	gl.glDisable(gl.GL_TEXTURE_2D)
-
-	SP:Disable()
 end
 
 --
