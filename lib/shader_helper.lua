@@ -42,26 +42,26 @@ local ShaderMT = {}
 ShaderMT.__index = ShaderMT
 
 --- DOCME
-function ShaderMT:BindAttributeStream (name, stream, size)
+function ShaderMT:BindAttributeStreamByName (name, stream, size)
 	local loc = assert(self._anames[name], "Invalid attribute name")
 
 	gl.glVertexAttribPointer(loc, size, gl.GL_FLOAT, gl.GL_FALSE, 0, stream)
 end
 
 --- DOCME
-function ShaderMT:BindAttributeStreamByLoc (loc, stream, size)
+function ShaderMT:BindAttributeStream (loc, stream, size)
 	gl.glVertexAttribPointer(loc, size, gl.GL_FLOAT, gl.GL_FALSE, 0, stream)
 end
 
 --- DOCME
-function ShaderMT:BindUniformMatrix (name, matrix)
+function ShaderMT:BindUniformMatrixByName (name, matrix)
 	local loc = assert(self._unames[name], "Invalid uniform name")
 
 	gl.glUniformMatrix4fv(loc, 1, gl.GL_FALSE, matrix)
 end
 
 --- DOCME
-function ShaderMT:BindUniformMatrixByLoc (loc, matrix)
+function ShaderMT:BindUniformMatrix (loc, matrix)
 	gl.glUniformMatrix4fv(loc, 1, gl.GL_FALSE, matrix)
 end
 
@@ -126,14 +126,29 @@ function ShaderMT:Use ()
 	gl.glUseProgram(self._program)
 end
 
+-- --
+local IntVar = ffi.new("GLint[1]")
+
 --
-local function EnumFeatures (str, prog, patt, func)
+local function Int (prog, enum)
+	gl.glGetProgramiv(prog, enum, IntVar)
+
+	return IntVar[0]
+end
+
+-- --
+local EnumVar = ffi.new("GLenum[1]")
+
+--
+local function EnumFeatures (prog, name, name_size, count_enum, get_active, get_loc)
 	local locs, names = {}, {}
 
-	for prec, ftype, name in str:gmatch(patt) do
-		local loc = gl[func](prog, name)
+	for i = 1, Int(prog, count_enum) do
+		gl[get_active](prog, i - 1, name_size, nil, IntVar, EnumVar, name)
 
-		locs[#locs + 1], names[name] = loc, loc
+		local loc = gl[get_loc](prog, name)
+
+		locs[#locs + 1], names[ffi.string(name)] = loc, loc
 	end
 
 	return locs, names
@@ -148,15 +163,12 @@ function M.NewShader (vs_source, fs_source)
 	local prog, err = shaders.LoadProgram(vs_source, fs_source)
 
 	if prog ~= 0 then
-		-- TODO: Figure out pattern to consume GLSL comments...
-		-- ("//.*\n") ????
-		-- ("/*.**/") ????
+		local len = max(Int(prog, gl.GL_ACTIVE_ATTRIBUTE_MAX_LENGTH), Int(prog, gl.GL_ACTIVE_UNIFORM_MAX_LENGTH))
+		local buffer = ffi.new("GLchar[?]", len + 1)
 
 		-- Enumerate attributes and uniforms.
-		local alocs, anames = EnumFeatures(vs_source, prog, "attribute%s+(%a+)%s+(%w+)%s+(%w+)%s*;", "glGetAttribLocation")
-		local ulocs, unames = EnumFeatures(vs_source, prog, "uniform%s+(%a+)%s+(%w+)%s+(%w+)%s*;", "glGetUniformLocation")
-
-		-- Varyings, too?
+		local alocs, anames = EnumFeatures(prog, buffer, len, gl.GL_ACTIVE_ATTRIBUTES, "glGetActiveAttrib", "glGetAttribLocation")
+		local ulocs, unames = EnumFeatures(prog, buffer, len, gl.GL_ACTIVE_UNIFORMS, "glGetActiveUniform", "glGetUniformLocation")
 
 		return setmetatable({ _alocs = alocs, _anames = anames, _ulocs = ulocs, _unames = unames, _program = prog }, ShaderMT)
 	else

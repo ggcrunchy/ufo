@@ -87,9 +87,9 @@ function M.Draw (name, x, y, w, h, u1, v1, u2, v2)
 		x + w, y + h
 	)
 
-	SP:BindUniformMatrixByLoc(loc_proj, Proj[0])
-	SP:BindAttributeStreamByLoc(loc_pos, ver, 2)
-	SP:BindAttributeStreamByLoc(loc_tex, tex, 2)
+	SP:BindUniformMatrix(loc_proj, Proj[0])
+	SP:BindAttributeStream(loc_pos, ver, 2)
+	SP:BindAttributeStream(loc_tex, tex, 2)
 
 	SP:DrawArrays(gl.GL_TRIANGLE_STRIP, 4)
 end
