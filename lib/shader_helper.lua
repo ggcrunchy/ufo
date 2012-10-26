@@ -156,9 +156,7 @@ function ShaderMT:Use ()
 		OnDone = self._on_done
 		UniformNames = self._unames
 
-		if self._on_use then
-			self:_on_use()
-		end
+		self:_on_use()
 	end
 end
 
@@ -196,6 +194,9 @@ local function EnumFeatures (prog, name, name_size, count_enum, get_active, get_
 	return locs, names
 end
 
+--
+local function OnUseDef () end
+
 --- DOCME
 -- @string vs_source
 -- @string fs_source
@@ -214,12 +215,15 @@ function M.NewShader (vs_source, fs_source, options)
 		local ulocs, unames = EnumFeatures(prog, buffer, len, gl.GL_ACTIVE_UNIFORMS, "glGetActiveUniform", "glGetUniformLocation")
 
 		--
-		local shader = { _alocs = alocs, _anames = anames, _ulocs = ulocs, _unames = unames, _program = prog }
+		local shader, on_use = { _alocs = alocs, _anames = anames, _ulocs = ulocs, _unames = unames, _program = prog }
 
 		if options then
-			shader._on_use = options.on_use
+			on_use = options.on_use
+
 			shader._on_done = options.on_done
 		end
+
+		shader._on_use = on_use or OnUseDef
 
 		return setmetatable(shader, ShaderMT)
 	else

@@ -61,6 +61,12 @@ local function InitSDL()
 				MouseWheelHandler(event.wheel)
 			 elseif event.type == sdl.SDL_MOUSEMOTION then
 				MouseMotionHandler(event.motion)
+			elseif event.type == sdl.SDL_WINDOWEVENT then
+				if event.window.event == sdl.SDL_WINDOWEVENT_MINIMIZED then
+					print("MINIM")
+				else
+					print(tostring(event.window.event))
+				end
 			 end
 		  end
 		  return true 
@@ -394,13 +400,6 @@ end
 
 gl.glEnable(gl.GL_DEPTH_TEST)
 gl.glDepthFunc(gl.GL_LESS)
-
---[[
-Line shader?
--- Identity -> loc_mvp
-	gl.glVertexAttribPointer(0, 3, gl.GL_FLOAT, 0, 0, (void*)lVerts)
-	gl.glDrawArrays(gl.GL_LINES, 0, objects[2].nEdges*2)
-]]
 
 while wm:update() do
 	gl.glClear(bit.bor(gl.GL_COLOR_BUFFER_BIT, gl.GL_DEPTH_BUFFER_BIT))
