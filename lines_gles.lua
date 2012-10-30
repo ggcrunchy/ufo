@@ -5,6 +5,7 @@ local type = type
 -- Modules --
 local ffi = require("ffi")
 local gl  = require("ffi/OpenGLES2")
+local render_state = require("render_state_gles")
 local shader_helper = require("lib.shader_helper")
 local xforms = require("transforms_gles")
 
