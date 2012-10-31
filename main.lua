@@ -363,7 +363,15 @@ local x, dx = 0, 1
 local CUBE = shapes.GenCube(1)
 
 local lines = require("lines_gles")
-local types = require("types")
+
+local function XYZ (pos, target, t)
+	local s = 1 - t
+	local x = s * pos[0] + t * target[0]
+	local y = s * pos[1] + t * target[1]
+	local z = s * (pos[2] + 800) + t * target[2]
+	return x, y, z
+end
+
 local function Test ()
 	local ddir = dwheel * .2
 	local dside = CalcMove("left", "right", .2)
@@ -397,10 +405,7 @@ local function Test ()
 	SP:DrawElements(gl.GL_TRIANGLES, CUBE.indices, CUBE.num_indices)
 
 	DrawLogoCursor(100 + x, 100)
-
-lines.Draw(pos[0], pos[1], pos[2], target[0], target[1], target[2])
-local c = types.Float3(1,0,0)
-lines.Draw(pos[0], pos[1], pos[2] + 200, target[0], target[1], target[2], {.5,0,.5}, c)--{0,1,0})
+lines.Draw(pos[0] + 200, pos[1], pos[2] + 100, target[0], target[1], target[2])
 	if x > 200 then
 		dx = -1
 	elseif x < -200 then

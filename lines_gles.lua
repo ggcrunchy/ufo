@@ -7,12 +7,11 @@ local ffi = require("ffi")
 local gl  = require("ffi/OpenGLES2")
 local render_state = require("render_state_gles")
 local shader_helper = require("lib.shader_helper")
-local types = require("types")
 --local xforms = require("transforms_gles")
 
 -- Imports --
-local Float3 = types.Float3
-local Float4 = types.Float4
+local Float3 = ffi.typeof("float[3]")
+local Float4 = ffi.typeof("float[4]")
 
 -- Exports --
 local M = {}
@@ -21,13 +20,13 @@ local M = {}
 local MVP = render_state.NewLazyMatrix()
 
 -- --
-local Pos = types.Float3A(32)
+local Pos = ffi.new("float[?][3]", 32)
 
 -- --
 local PrevPos = Float3() -- In case we want an "append"...
 
 -- --
-local Color = types.Float4A(32)
+local Color = ffi.new("float[?][4]", 32)
 
 -- --
 local PrevColor = Float4()
@@ -39,8 +38,8 @@ local N = 0
 local DrawBatch
 
 --
-local loc_mvp
-local loc_pos, loc_color
+local LocMVP
+local LocPos, LocColor
 
 -- --
 local SP = shader_helper.NewShader{
@@ -70,7 +69,7 @@ local SP = shader_helper.NewShader{
 
 	on_draw = function(sp)
 		if render_state.GetModelViewProjection_Lazy(MVP) then
-			sp:BindUniformMatrix(loc_mvp, MVP.matrix[0])
+			sp:BindUniformMatrix(LocMVP, MVP.matrix[0])
 		end
 	end,
 	
@@ -85,8 +84,8 @@ local SP = shader_helper.NewShader{
 	on_use = function(sp)
 	
 		-- Set proj = ??
-		sp:BindAttributeStream(loc_pos, Pos, 3)
-		sp:BindAttributeStream(loc_color, Color, 4)
+		sp:BindAttributeStream(LocPos, Pos, 3)
+		sp:BindAttributeStream(LocColor, Color, 4)
 --	SP:BindUniformMatrix(loc_proj, Proj[0])
 --[[
 		gl.glDisable(gl.GL_DEPTH_TEST)
@@ -105,10 +104,10 @@ local SP = shader_helper.NewShader{
 	end
 }
 
-loc_mvp = SP:GetUniformByName("mvp")
+LocMVP = SP:GetUniformByName("mvp")
 
-loc_pos = SP:GetAttributeByName("position")
-loc_color = SP:GetAttributeByName("color")
+LocPos = SP:GetAttributeByName("position")
+LocColor = SP:GetAttributeByName("color")
 
 function DrawBatch ()
 --	SP:BindAttributeStream(loc_pos, ver, 2)
@@ -126,24 +125,25 @@ local function GetColor (color, def)
 		return color
 	end
 
-	if def == nil then
-		def = Float4(1, 1, 1, 1)
-	end
+	local out = def
 
-	if ffi.istype(Float3, color) then
-		ffi.copy(def, color, ffi.sizeof(Float3))
+	if ffi.istype(Float3, color) or type(color) == "table" then
+		out = Float4(1, 1, 1, 1)
 
-		def[3] = 1
+		if ffi.istype(Float3, color) then
+			ffi.copy(out, color, ffi.sizeof(Float3))
+		else
+			assert(#color == 3 or #color == 4, "Invalid color array")
 
-	elseif type(color) == "table" then
-		assert(#color == 3 or #color == 4, "Invalid color array")
-
-		for i = 1, #color do
-			def[i - 1] = color[i]
+			for i = 1, #color do
+				out[i - 1] = color[i]
+			end
 		end
+	elseif def == nil then
+		out = Float4(1, 1, 1, 1)
 	end
 
-	return def
+	return out
 end
 
 --- DOCME
