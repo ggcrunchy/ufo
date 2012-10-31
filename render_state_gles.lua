@@ -7,74 +7,109 @@ local xforms = require("transforms_gles")
 local M = {}
 
 --
+local LazyMatrix = ffi.typeof[[
+	struct {
+		float matrix[4][4];
+		int32_t counter;
+	}
+]]
+
+--
 local function NewMatrix ()
-	local mat = xforms.New()
+	local mat = LazyMatrix()
 
-	xforms.MatrixLoadIdentity(mat)
+	xforms.MatrixLoadIdentity(mat.matrix)
 
-	return mat, 0
+	mat.counter = 1;
+
+	return mat
 end
 
 -- --
-local MVP, ID_MVP = NewMatrix()
+local MVP = NewMatrix()
 
 -- --
-local MatrixSize = ffi.sizeof(src)
+local MatrixSize = ffi.sizeof(MVP.matrix)
 
 --
-local CopyMatrix (dst, src, rval)
+local function CopyMatrix (dst, src, inc)
 	ffi.copy(dst, src, MatrixSize)
+
+	if inc then
+		dst.counter = dst.counter + 1
+	end
+end
+
+--
+local function CopyMatrix_Lazy (dst, src)
+	local diff = src.counter ~= dst.counter
+
+	if diff then
+		CopyMatrix(dst, src)
+
+		dst.counter = src.counter
+	end
+
+	return diff
 end
 
 --- DOCME
 function M.GetModelViewProjection (mvp)
 	CopyMatrix(mvp, MVP)
+end
 
-	return ID_MVP
+--- DOCME
+function M.GetModelViewProjection_Lazy (mvp)
+	return CopyMatrix_Lazy(mvp, MVP)
 end
 
 -- --
-local MV, ID_MV = NewMatrix()
+local MV = NewMatrix()
 
 --- DOCME
 function M.GetModelView (mv)
 	CopyMatrix(mv, MV)
+end
 
-	return ID_MV
+function M.GetModelView_Lazy (mv)
+	return CopyMatrix_Lazy(mv, MV)
 end
 
 -- --
-local Proj, ID_Proj = NewMatrix()
+local Proj = NewMatrix()
 
 --- DOCME
 function M.GetProjection (proj)
 	CopyMatrix(proj, Proj)
+end
 
-	return ID_Proj
+function M.GetProjection_Lazy (proj)
+	return CopyMatrix_Lazy(proj, Proj)
 end
 
 --
 local function ComputeMVP ()
-	xforms.MatrixMultiply(MVP, MV, Proj)
+	xforms.MatrixMultiply(MVP.matrix, MV.matrix, Proj.matrix)
 
-	ID_MVP = ID_MVP + 1
+	MVP.counter = MVP.counter + 1
 end
+
+--- DOCME
+-- @function NewLazyMatrix
+-- @treturn LazyMatrix X
+M.NewLazyMatrix = LazyMatrix
 
 --- DOCME
 -- @param mv
 function M.SetModelViewMatrix (mv)
-	ID_MV = ID_MV + 1
-
-	CopyMatrix(MV, mv)
+	CopyMatrix(MV, mv, true)
 	ComputeMVP()
 end
 
 --- DOCME
 -- @param proj
 function M.SetProjectionMatrix (proj)
-	ID_Proj = ID_Proj + 1
-
-	CopyMatrix(Proj, proj)
+	CopyMatrix(Proj, proj, true)
 	ComputeMVP()
 end
 

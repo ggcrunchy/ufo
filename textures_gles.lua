@@ -12,8 +12,8 @@ local M = {}
 local Proj = xforms.New()
 
 -- --
-local SP = shader_helper.NewShader(
-	[[
+local SP = shader_helper.NewShader{
+	vs = [[
 		attribute mediump vec2 position;
 		attribute mediump vec2 texcoord;
 		uniform mediump mat4 proj;
@@ -27,7 +27,8 @@ local SP = shader_helper.NewShader(
 			uv = texcoord;
 		}
 	]],
-	[[
+
+	fs = [[
 		varying highp vec2 uv;
 
 		uniform sampler2D tex;
@@ -37,27 +38,26 @@ local SP = shader_helper.NewShader(
 			gl_FragColor = texture2D(tex, uv);
 		}
 	]],
-	{
-		on_done = function()
-			gl.glDisable(gl.GL_TEXTURE_2D)
-		end,
 
-		on_use = function()
-			gl.glDisable(gl.GL_DEPTH_TEST)
-			gl.glDisable(gl.GL_CULL_FACE)
-			gl.glEnable(gl.GL_TEXTURE_2D)
+	on_done = function()
+		gl.glDisable(gl.GL_TEXTURE_2D)
+	end,
 
-			local screen = sdl.SDL_GetVideoSurface()
+	on_use = function()
+		gl.glDisable(gl.GL_DEPTH_TEST)
+		gl.glDisable(gl.GL_CULL_FACE)
+		gl.glEnable(gl.GL_TEXTURE_2D)
 
-			gl.glViewport(0, 0, screen.w, screen.h)
+		local screen = sdl.SDL_GetVideoSurface()
 
-			xforms.MatrixLoadIdentity(Proj)
-			xforms.Ortho(Proj, 0, screen.w, screen.h, 0, 0, 1)
+		gl.glViewport(0, 0, screen.w, screen.h)
 
-			gl.glActiveTexture(gl.GL_TEXTURE0)
-		end
-	}
-)
+		xforms.MatrixLoadIdentity(Proj)
+		xforms.Ortho(Proj, 0, screen.w, screen.h, 0, 0, 1)
+
+		gl.glActiveTexture(gl.GL_TEXTURE0)
+	end
+}
 
 local loc_proj = SP:GetUniformByName("proj")
 local loc_pos = SP:GetAttributeByName("position")

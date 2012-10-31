@@ -120,16 +120,23 @@ local function Enable (shader)
 	end
 end
 
+--
+local function Draw (shader)
+	Enable(shader)
+
+	shader:_on_draw()
+end
+
 --- DOCME
 function ShaderMT:DrawArrays (type, count, base)
-	Enable(self)
+	Draw(self)
 
 	gl.glDrawArrays(type, base or 0, count)
 end
 
 --- DOCME
 function ShaderMT:DrawElements (type, indices, num_indices)
-	Enable(self)
+	Draw(self)
 
 	gl.glDrawElements(type, num_indices, gl.GL_UNSIGNED_SHORT, indices)
 end
@@ -195,16 +202,14 @@ local function EnumFeatures (prog, name, name_size, count_enum, get_active, get_
 end
 
 --
-local function OnUseDef () end
+local function OnEventDef () end
 
 --- DOCME
--- @string vs_source
--- @string fs_source
--- @ptable options
+-- @ptable params
 -- @treturn table X
 -- @treturn string Y
-function M.NewShader (vs_source, fs_source, options)
-	local prog, err = shaders.LoadProgram(vs_source, fs_source)
+function M.NewShader (params)
+	local prog, err = shaders.LoadProgram(params.vs, params.fs)
 
 	if prog ~= 0 then
 		local len = max(Int(prog, gl.GL_ACTIVE_ATTRIBUTE_MAX_LENGTH), Int(prog, gl.GL_ACTIVE_UNIFORM_MAX_LENGTH))
@@ -215,18 +220,17 @@ function M.NewShader (vs_source, fs_source, options)
 		local ulocs, unames = EnumFeatures(prog, buffer, len, gl.GL_ACTIVE_UNIFORMS, "glGetActiveUniform", "glGetUniformLocation")
 
 		--
-		local shader, on_use = { _alocs = alocs, _anames = anames, _ulocs = ulocs, _unames = unames, _program = prog }
+		local shader, on_draw, on_use = { _alocs = alocs, _anames = anames, _ulocs = ulocs, _unames = unames, _program = prog }
 
-		if options then
-			on_use = options.on_use
-
-			shader._on_done = options.on_done
-		end
-
-		shader._on_use = on_use or OnUseDef
+		shader._on_done = params.on_done
+		shader._on_draw = params.on_draw or OnEventDef
+		shader._on_use = params.on_use or OnEventDef
 
 		return setmetatable(shader, ShaderMT)
 	else
+	print("VS", params.vs)
+	print("FS", params.fs)
+	print(err)
 		return nil, err
 	end
 end

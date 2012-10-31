@@ -243,22 +243,23 @@ end
 local shader_helper = require("lib.shader_helper")
 local shapes = require("shapes_gles")
 local xforms = require("transforms_gles")
+local render_state = require("render_state_gles")
 
-local proj = xforms.New()
+local matrix = xforms.New()
 
-xforms.MatrixLoadIdentity(proj)
-xforms.Perspective(proj, 70, ww / wh, 1, 1000)
+xforms.MatrixLoadIdentity(matrix)
+xforms.Perspective(matrix, 70, ww / wh, 1, 1000)
 
-local camera = xforms.New()
+render_state.SetProjectionMatrix(matrix)
 
-xforms.MatrixLoadIdentity(camera)
-
-local mvp = xforms.New()
+local mvp = render_state.NewLazyMatrix()
 
 gl.glViewport( 0, 0, ww, wh )
 
-local SP = shader_helper.NewShader(
-	[[
+local loc_mvp
+
+local SP = shader_helper.NewShader{
+	vs = [[
 		attribute lowp vec4 color;
 		attribute mediump vec3 position;
 		varying lowp vec3 col;
@@ -271,7 +272,8 @@ local SP = shader_helper.NewShader(
 			col = color.rgb;
 		}
 	]],
-	[[
+
+	fs = [[
 		varying lowp vec3 col;
 
 		void main ()
@@ -279,21 +281,25 @@ local SP = shader_helper.NewShader(
 			gl_FragColor = vec4(col, 1);
 		}
 	]],
-	{
-		on_use = function()
-			gl.glViewport(0, 0, ww, wh)
 
-			xforms.MatrixMultiply(mvp, camera, proj)
-
-			gl.glEnable(gl.GL_DEPTH_TEST)
-			gl.glEnable(gl.GL_CULL_FACE)
+	on_draw = function(sp)
+		if render_state.GetModelViewProjection_Lazy(mvp) then
+			sp:BindUniformMatrix(loc_mvp, mvp.matrix[0])
 		end
-	}
-)
+	end,
+
+	on_use = function()
+		gl.glViewport(0, 0, ww, wh)
+
+		gl.glEnable(gl.GL_DEPTH_TEST)
+		gl.glEnable(gl.GL_CULL_FACE)
+	end
+}
 
 local loc_color = SP:GetAttributeByName("color")
 local loc_position = SP:GetAttributeByName("position")
-local loc_mvp = SP:GetUniformByName("mvp")
+
+loc_mvp = SP:GetUniformByName("mvp")
 
 local mc = require("mouse_camera")
 local v3math = require("lib.v3math")
@@ -356,6 +362,8 @@ local x, dx = 0, 1
 
 local CUBE = shapes.GenCube(1)
 
+local lines = require("lines_gles")
+local types = require("types")
 local function Test ()
 	local ddir = dwheel * .2
 	local dside = CalcMove("left", "right", .2)
@@ -373,15 +381,16 @@ local function Test ()
 
 	mc.GetVectors(pos, dir, side, up)
 
-	xforms.MatrixLoadIdentity(camera)
+	xforms.MatrixLoadIdentity(matrix)
 
 	local target = v3math.addnew(pos, dir)
 
-	xforms.LookAt(camera, pos[0], pos[1], pos[2], target[0], target[1], target[2], up[0], up[1], up[2])
+	xforms.LookAt(matrix, pos[0], pos[1], pos[2], target[0], target[1], target[2], up[0], up[1], up[2])
 
+	render_state.SetModelViewMatrix(matrix)
+	
 	SP:Use()
 
-	SP:BindUniformMatrix(loc_mvp, mvp[0])
 	SP:BindAttributeStream(loc_color, color, 4)
 	SP:BindAttributeStream(loc_position, CUBE.vertices, 3)
 
@@ -389,6 +398,9 @@ local function Test ()
 
 	DrawLogoCursor(100 + x, 100)
 
+lines.Draw(pos[0], pos[1], pos[2], target[0], target[1], target[2])
+local c = types.Float3(1,0,0)
+lines.Draw(pos[0], pos[1], pos[2] + 200, target[0], target[1], target[2], {.5,0,.5}, c)--{0,1,0})
 	if x > 200 then
 		dx = -1
 	elseif x < -200 then
