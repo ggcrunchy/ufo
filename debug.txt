@@ -1,0 +1,1 @@
+err: egl::Surface::resetSwapChain(221): Could not create offscreen texture: 8876086C

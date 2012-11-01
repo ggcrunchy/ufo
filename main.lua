@@ -11,7 +11,7 @@ local MouseActionHandler
 local MouseMotionHandler
 local MouseWheelHandler
 
-local Diff
+local Diff, Init, Term
 
 -- Use SDL for windowing and events
 local function InitSDL()
@@ -64,7 +64,9 @@ local function InitSDL()
 			elseif event.type == sdl.SDL_WINDOWEVENT then
 				if event.window.event == sdl.SDL_WINDOWEVENT_MINIMIZED then
 					print("MINIM")
-				else
+					Term()
+				elseif event.window.event == sdl.SDL_WINDOWEVENT_RESTORED then
+					Init()
 					print(tostring(event.window.event))
 				end
 			 end
@@ -105,11 +107,25 @@ for i=0,10 do
 --    print(i,c[i])
 end
 
-local surf     = egl.eglCreateWindowSurface( dpy, cfg[0], wm.window, nil )
-local ctx      = egl.eglCreateContext(       dpy, cfg[0], nil, ctx_attr )
-local r        = egl.eglMakeCurrent(         dpy,   surf, surf, ctx )
+local surf, ctx, r
+
+function Init ()
+--local 
+surf     = egl.eglCreateWindowSurface( dpy, cfg[0], wm.window, nil )
+--local 
+ctx      = egl.eglCreateContext(       dpy, cfg[0], nil, ctx_attr )
+--local 
+r        = egl.eglMakeCurrent(         dpy,   surf, surf, ctx )
 
 print('surf/ctx', surf, r0, ctx, r, n_cfg[0])
+end
+
+function Term ()
+egl.eglDestroyContext( dpy, ctx )
+egl.eglDestroySurface( dpy, surf )
+end
+
+Init()
 
 local function validate_shader( shader )
    local int = ffi.new( "GLint[1]" )
@@ -295,7 +311,7 @@ local SP = shader_helper.NewShader{
 		gl.glEnable(gl.GL_CULL_FACE)
 	end
 }
-
+require("marching_cubes")
 local loc_color = SP:GetAttributeByName("color")
 local loc_position = SP:GetAttributeByName("position")
 
@@ -405,7 +421,7 @@ local function Test ()
 	SP:DrawElements(gl.GL_TRIANGLES, CUBE.indices, CUBE.num_indices)
 
 	DrawLogoCursor(100 + x, 100)
-lines.Draw(pos[0] + 200, pos[1], pos[2] + 100, target[0], target[1], target[2])
+lines.Draw(pos[0] + 200, pos[1], pos[2] + 100, target[0], target[1], target[2], {0,1,0}, {1,0,0})
 	if x > 200 then
 		dx = -1
 	elseif x < -200 then
@@ -422,16 +438,21 @@ while wm:update() do
 	gl.glClear(bit.bor(gl.GL_COLOR_BUFFER_BIT, gl.GL_DEPTH_BUFFER_BIT))
 
 	Test()
-
+local d = egl.eglGetError()
 	egl.eglSwapBuffers(dpy, surf)
+
+local e = egl.eglGetError()
+if d~=egl.EGL_SUCCESS or e~=egl.EGL_SUCCESS then
+print("OH NOES", ("%x"):format(d), ("%x"):format(e))
+end	
 end
 
 if cursor_texture[0] ~= 0 then
 	gl.glDeleteTextures(1, cursor_texture)
 end
 
-egl.eglDestroyContext( dpy, ctx )
-egl.eglDestroySurface( dpy, surf )
+Term()
+
 egl.eglTerminate( dpy )
  
 wm:exit()

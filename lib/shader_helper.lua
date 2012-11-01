@@ -226,11 +226,12 @@ function M.NewShader (params)
 		shader._on_draw = params.on_draw or OnEventDef
 		shader._on_use = params.on_use or OnEventDef
 
-		return setmetatable(shader, ShaderMT)
+		setmetatable(shader, ShaderMT)
+
+		;(params.on_init or OnEventDef)(shader)
+
+		return shader
 	else
-	print("VS", params.vs)
-	print("FS", params.fs)
-	print(err)
 		return nil, err
 	end
 end
