@@ -108,8 +108,9 @@ for i=0,10 do
 end
 
 local surf, ctx, r
-
+local DDD
 function Init ()
+DDD = false
 --local 
 surf     = egl.eglCreateWindowSurface( dpy, cfg[0], wm.window, nil )
 --local 
@@ -119,8 +120,13 @@ r        = egl.eglMakeCurrent(         dpy,   surf, surf, ctx )
 
 print('surf/ctx', surf, r0, ctx, r, n_cfg[0])
 end
-
+local CC
 function Term ()
+DDD= true
+if CC[0] ~= 0 then
+	gl.glDeleteTextures(1, CC)
+	CC[0] = 0
+end
 egl.eglDestroyContext( dpy, ctx )
 egl.eglDestroySurface( dpy, surf )
 end
@@ -194,18 +200,19 @@ local textures = require("textures_gles")
 local LOGO_FILE = "icon.bmp"
 
 local cursor_texture = ffi.new("GLuint[1]")
-
+CC=cursor_texture
 local minx, miny, maxx, maxy, iw, ih
 
 local function DrawLogoCursor (x, y)
 	if cursor_texture[0] == 0 then
+print("0000")
 		local file = sdl.SDL_RWFromFile(LOGO_FILE, "rb")
 		local image = sdl.SDL_LoadBMP_RW(file, 1)
 
 		if image ~= nil then
 			iw = image.w
 			ih = image.h
-
+print("LOAD")
 			cursor_texture[0], minx, miny, maxx, maxy = textures.LoadTexture(image)
 
 			sdl.SDL_FreeSurface(image)
@@ -216,7 +223,7 @@ local function DrawLogoCursor (x, y)
 		end
 	end
 
-	textures.Draw(cursor_texture[0], x, y, iw, ih, minx, miny, maxx, maxy)
+	textures.Draw(cursor_texture[0], x, y, iw, ih, minx, miny, maxx, maxy, DDD)
 end
 
 local color = ffi.new("GLfloat[960]", {
@@ -438,13 +445,15 @@ while wm:update() do
 	gl.glClear(bit.bor(gl.GL_COLOR_BUFFER_BIT, gl.GL_DEPTH_BUFFER_BIT))
 
 	Test()
+if not DDD then
 local d = egl.eglGetError()
 	egl.eglSwapBuffers(dpy, surf)
 
 local e = egl.eglGetError()
 if d~=egl.EGL_SUCCESS or e~=egl.EGL_SUCCESS then
 print("OH NOES", ("%x"):format(d), ("%x"):format(e))
-end	
+end
+end
 end
 
 if cursor_texture[0] ~= 0 then

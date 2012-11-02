@@ -73,7 +73,63 @@ local loc_tex = SP:GetAttributeByName("texcoord")
 -- @param v1
 -- @param u2
 -- @param v2
-function M.Draw (name, x, y, w, h, u1, v1, u2, v2)
+local bbb
+function M.Draw (name, x, y, w, h, u1, v1, u2, v2, aaa)
+if aaa then
+	if not bbb then
+SP = shader_helper.NewShader{
+	vs = [[
+		attribute mediump vec2 position;
+		attribute mediump vec2 texcoord;
+		uniform mediump mat4 proj;
+
+		varying highp vec2 uv;
+		
+		void main ()
+		{
+			gl_Position = proj * vec4(position, 0, 1);
+
+			uv = texcoord;
+		}
+	]],
+
+	fs = [[
+		varying highp vec2 uv;
+
+		uniform sampler2D tex;
+
+		void main ()
+		{
+			gl_FragColor = texture2D(tex, uv);
+		}
+	]],
+
+	on_done = function()
+		gl.glDisable(gl.GL_TEXTURE_2D)
+	end,
+
+	on_use = function()
+		gl.glDisable(gl.GL_DEPTH_TEST)
+		gl.glDisable(gl.GL_CULL_FACE)
+		gl.glEnable(gl.GL_TEXTURE_2D)
+
+		local screen = sdl.SDL_GetVideoSurface()
+
+		gl.glViewport(0, 0, screen.w, screen.h)
+
+		xforms.MatrixLoadIdentity(Proj)
+		xforms.Ortho(Proj, 0, screen.w, screen.h, 0, 0, 1)
+
+		gl.glActiveTexture(gl.GL_TEXTURE0)
+	end
+}
+
+loc_proj = SP:GetUniformByName("proj")
+loc_pos = SP:GetAttributeByName("position")
+loc_tex = SP:GetAttributeByName("texcoord")
+		bbb = true
+	end
+end
 	SP:Use()
 
 	gl.glBindTexture(gl.GL_TEXTURE_2D, name)
