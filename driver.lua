@@ -46,19 +46,18 @@ local textures = require("textures_gles")
 local LOGO_FILE = "icon.bmp"
 
 local cursor_texture = ffi.new("GLuint[1]")
-CC=cursor_texture
+
 local minx, miny, maxx, maxy, iw, ih
 
 local function DrawLogoCursor (x, y)
 	if cursor_texture[0] == 0 then
-print("0000")
 		local file = sdl.SDL_RWFromFile(LOGO_FILE, "rb")
 		local image = sdl.SDL_LoadBMP_RW(file, 1)
 
 		if image ~= nil then
 			iw = image.w
 			ih = image.h
-print("LOAD")
+
 			cursor_texture[0], minx, miny, maxx, maxy = textures.LoadTexture(image)
 
 			sdl.SDL_FreeSurface(image)

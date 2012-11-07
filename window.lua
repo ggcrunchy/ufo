@@ -30,6 +30,10 @@ local Surface
 -- --
 local Window
 
+-- --
+local NoSurface = ffi.cast("EGLSurface", egl.EGL_NO_SURFACE)
+local NoContext = ffi.cast("EGLContext", egl.EGL_NO_CONTEXT)
+
 --- DOCME
 function M.Close ()
 	if Context then
@@ -40,13 +44,17 @@ function M.Close ()
 		egl.eglDestroySurface(Display, Surface)
 	end
 
-	local no_surface = ffi.cast("EGLSurface", egl.EGL_NO_SURFACE)
-	local no_context = ffi.cast("EGLContext", egl.EGL_NO_CONTEXT)
-	
-	egl.eglMakeCurrent(Display, no_surface, no_surface, no_context)
+	egl.eglMakeCurrent(Display, NoSurface, NoSurface, NoContext)
 	egl.eglTerminate(Display)
 
 	Display, Context, Surface, Window = 0
+end
+
+--- DOCME
+function M.Reload ()
+    Surface = egl.eglCreateWindowSurface(Display, Config[0], Window, nil)
+
+	egl.eglMakeCurrent(Display, Surface, Surface, Context)
 end
 
 --- DOCME
@@ -94,16 +102,10 @@ function M.SetMode_SDL (ww, wh)
 	M.Reload()
 end
 
---- DOCME
-function M.Reload ()
-    Surface = egl.eglCreateWindowSurface(Display, Config[0], Window, nil)
-
-	egl.eglMakeCurrent(Display, Surface, Surface, Context)
-end
-
 ---
-function M.SwapBuffers (e)
-	local result = --[[e and ]]egl.eglSwapBuffers(Display, Surface)
+-- @bool prev
+function M.SwapBuffers (prev)
+	local result = prev and egl.eglSwapBuffers(Display, Surface)
 
 	if result ~= egl.EGL_TRUE then
         local err = egl.eglGetError()
@@ -133,7 +135,6 @@ function M.SwapBuffers (e)
         if err == egl.EGL_BAD_ALLOC or err == egl.EGL_BAD_SURFACE then
         --    if (errval==EGL_BAD_ALLOC)
          --       //qDebug() << "Error was bad alloc, .. taking care of it.";
-
             egl.eglDestroySurface(Display, Surface)
 
 			M.Reload()
