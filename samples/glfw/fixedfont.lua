@@ -1,6 +1,6 @@
 local ffi  = require( "ffi" )
-local gl   = require( "ffi/OpenGL" ) 
 local glfw = require( "ffi/glfw" )
+local gl   = require( "ffi/OpenGL" ) 
 
 local font = require( "lib/fonts/pearl8x8" )
 local font = ffi.new( "uint8_t[?]", #font, font )
@@ -63,12 +63,13 @@ local function main()
    local window_x = ( desktop_width - width ) / 2
    local window_y = ( desktop_height - height ) / 2
 
+   glfw.glfwWindowHint( glfw.GLFW_POSITION_X, window_x )
+   glfw.glfwWindowHint( glfw.GLFW_POSITION_Y, window_y )
    glfw.glfwWindowHint(glfw.GLFW_WINDOW_NO_RESIZE, 1)
    local window = glfw.glfwCreateWindow( width, height, glfw.GLFW_WINDOWED, "fixedfont", nil )
    assert( window )
 
    glfw.glfwMakeContextCurrent( window )
-   glfw.glfwSetWindowPos( window, window_x, window_y )
    glfw.glfwSwapInterval( 0 );
 
    gl.glMatrixMode(gl.GL_PROJECTION);
